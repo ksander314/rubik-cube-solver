@@ -78,6 +78,13 @@ h1 .sub{ color:var(--muted); font-weight:400; font-size:14px; }
 .swatch.sel{ border-color:var(--accent); box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--accent); }
 .palette .hint{ color:var(--muted); font-size:12.5px; margin-left:4px; }
 
+/* ---- editable color palette ---- */
+.color-editor{ margin-top:8px; display:grid; gap:7px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:11px; max-width:340px; }
+.ce-row{ display:flex; align-items:center; gap:9px; }
+.ce-row input[type=color]{ width:36px; height:30px; padding:0; border:1px solid var(--line); border-radius:6px; background:none; cursor:pointer; flex:0 0 auto; }
+.ce-row input[type=text]{ flex:1; min-width:0; background:var(--panel2); border:1px solid var(--line); color:var(--ink); border-radius:6px; padding:6px 9px; font:inherit; font-size:13px; }
+.ce-reset{ justify-self:start; margin-top:2px; font-size:12.5px; padding:6px 10px; }
+
 /* ---- buttons ---- */
 .row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
 button{

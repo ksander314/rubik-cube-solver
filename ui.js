@@ -2,10 +2,23 @@
 (function(){
   // ---- colors ----
   var COLORS = [
-    {k:'W', name:'Белый'}, {k:'R', name:'Красный'},  {k:'Y', name:'Жёлтый'},
-    {k:'P', name:'Розовый'}, {k:'K', name:'Чёрный'}, {k:'N', name:'Коричневый'}
+    {k:'W', name:'Белый',  hex:'#f2f2f2'}, {k:'R', name:'Красный',  hex:'#e02a2a'}, {k:'Y', name:'Жёлтый',     hex:'#ffd500'},
+    {k:'P', name:'Розовый', hex:'#ff66b3'}, {k:'K', name:'Чёрный',  hex:'#1d1d1f'}, {k:'N', name:'Коричневый', hex:'#8a5524'}
   ];
-  var NAME = {}; COLORS.forEach(function(c){ NAME[c.k]=c.name; });
+  var DEFAULT_COLORS = COLORS.map(function(c){ return {k:c.k, name:c.name, hex:c.hex}; });
+  var NAME = {};
+  function refreshNames(){ NAME={}; COLORS.forEach(function(c){ NAME[c.k]=c.name; }); }
+  // push the editable hex values into CSS variables so every sticker/swatch/3D
+  // face that uses `s-<key>` (which reads var(--<key>)) updates instantly.
+  function applyColorVars(){ COLORS.forEach(function(c){ document.documentElement.style.setProperty('--'+c.k, c.hex); }); }
+  function persistColors(){ try{ localStorage.setItem('rbk-colors', JSON.stringify(COLORS)); }catch(e){} }
+  function loadColors(){
+    try{
+      var arr=JSON.parse(localStorage.getItem('rbk-colors')||'null'); if(!arr) return;
+      arr.forEach(function(o){ var c=COLORS.filter(function(x){return x.k===o.k;})[0]; if(c){ if(o.hex)c.hex=o.hex; if(o.name)c.name=o.name; } });
+    }catch(e){}
+  }
+  refreshNames();
   // Russian names of the six faces (kept alongside the standard U/R/F/D/L/B letters)
   var FACENAME = {U:'Верх', D:'Низ', F:'Перёд', B:'Зад', L:'Лево', R:'Право'};
 
@@ -75,6 +88,25 @@
       d.innerHTML='<span class="dot s-'+key+'"></span> '+face.f+' ('+FACENAME[face.f]+') — '+NAME[key];
       l.appendChild(d);
     });
+  }
+  // ---- editable palette: pick any hex / rename each of the six colors ----
+  function buildColorEditor(){
+    var ce=$('colorEditor'); ce.innerHTML='';
+    COLORS.forEach(function(c){
+      var row=document.createElement('div'); row.className='ce-row';
+      var ci=document.createElement('input'); ci.type='color'; ci.value=c.hex; ci.title='Цвет';
+      ci.addEventListener('input', function(){ c.hex=ci.value; applyColorVars(); persistColors(); });
+      var ni=document.createElement('input'); ni.type='text'; ni.value=c.name; ni.maxLength=24; ni.title='Название';
+      ni.addEventListener('input', function(){ c.name=ni.value.trim()||c.name; refreshNames(); buildLegend(); persistColors(); });
+      row.appendChild(ci); row.appendChild(ni); ce.appendChild(row);
+    });
+    var reset=document.createElement('button'); reset.className='ghost ce-reset'; reset.textContent='Вернуть цвета по умолчанию';
+    reset.addEventListener('click', resetColors);
+    ce.appendChild(reset);
+  }
+  function resetColors(){
+    DEFAULT_COLORS.forEach(function(d){ var c=COLORS.filter(function(x){return x.k===d.k;})[0]; c.hex=d.hex; c.name=d.name; });
+    applyColorVars(); refreshNames(); buildLegend(); buildColorEditor(); persistColors();
   }
 
   // ---------- interactive 3D cube ----------
@@ -413,8 +445,13 @@
 
   // ---------- wire up ----------
   function init(){
-    buildNet(); buildPalette(); build3D();
+    loadColors(); applyColorVars();
+    buildNet(); buildPalette(); buildColorEditor(); build3D();
     setSolved(); renderInput();
+    $('btnColors').addEventListener('click', function(){
+      var ed=$('colorEditor'); ed.classList.toggle('hidden');
+      $('btnColors').textContent = (ed.classList.contains('hidden')?'🎨 Настроить цвета':'🎨 Скрыть настройку');
+    });
     $('btnFold').addEventListener('click', toggleFold);
     var scene=$('scene');
     scene.addEventListener('mousedown', dragStart);
