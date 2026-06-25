@@ -1,0 +1,10 @@
+# Claude Code local settings
+.claude/
+
+# macOS
+.DS_Store
+
+# scratch files used during development (screenshots, drivers, task output)
+_*.html
+_*.png
+*.output

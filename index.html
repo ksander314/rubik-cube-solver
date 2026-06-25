@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Сборка кубика Рубика — пошагово</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>Сборка кубика Рубика <span class="sub">— задайте свой кубик и соберите его по шагам</span></h1>
+  <p class="lead">Раскрасьте шесть граней так, как на вашем настоящем кубике, и нажмите <b>Собрать</b>.
+     Программа проведёт вас за руку — по одному ходу, кубик на экране меняется вместе с вами.</p>
+
+  <div class="cols">
+    <!-- СЛЕВА: развёртка кубика -->
+    <div class="col-net">
+      <div class="net" id="net"></div>
+
+      <!-- ввод -->
+      <div id="inputControls">
+        <div class="palette" id="palette"></div>
+        <div class="row">
+          <button class="primary" id="btnSolve">Собрать ▶</button>
+          <button id="btnSolved">Сбросить (собранный)</button>
+          <button id="btnScramble">Перемешать</button>
+          <button class="ghost" id="btnClear">Очистить</button>
+        </div>
+        <div class="msg" id="msg"></div>
+      </div>
+
+      <!-- управление показом -->
+      <div id="playControls" class="hidden">
+        <div class="row">
+          <button id="btnPrev">◀ Назад</button>
+          <button class="primary" id="btnNext">Дальше ▶</button>
+          <button id="btnPlay">Автопоказ</button>
+          <button class="ghost" id="btnEdit">✎ Изменить кубик</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- СПРАВА: помощь / показ шагов -->
+    <div class="col-side">
+      <!-- помощь по вводу -->
+      <div class="card" id="helpCard">
+        <h2>Кубик в 3D ⇄ развёртка</h2>
+        <div class="scene" id="scene" title="Тяните мышкой, чтобы повернуть">
+          <div class="cube3d" id="cube3d"></div>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <button id="btnFold">Развернуть в плоскость ▦</button>
+          <span class="hint" id="foldHint" style="align-self:center">Тяните мышкой, чтобы повернуть</span>
+        </div>
+
+        <h2 style="margin-top:18px">Что такое развёртка</h2>
+        <p style="margin:0 0 8px;color:var(--muted);font-size:13px">
+          Представьте, что кубик — это коробка, которую разрезали по рёбрам и разложили на столе
+          плоским крестом. Получается 6 квадратов 3×3:
+        </p>
+        <ul style="margin:0 0 10px;padding-left:18px;color:var(--muted);font-size:13px">
+          <li><b>U</b> (верх) — сверху, <b>D</b> (низ) — снизу;</li>
+          <li>в средней строке слева направо: <b>L</b> (лево), <b>F</b> (перёд), <b>R</b> (право), <b>B</b> (зад).</li>
+        </ul>
+        <p style="margin:0 0 10px;color:var(--muted);font-size:13px">
+          Центр каждой грани не двигается, поэтому <b>цвет центра — это «настоящий» цвет грани</b>.
+          Держите кубик в одном положении: <b>U</b> сверху, <b>F</b> к себе. Грань <b>B</b> (зад) на развёртке
+          показана так, будто вы повернули кубик вправо и заглянули за него.
+        </p>
+        <p style="margin:0 0 10px;color:var(--muted);font-size:13px">
+          Нажмите «развернуть/свернуть» выше или покрутите 3D-кубик — увидите, какой плоский квадрат
+          какой грани соответствует.
+        </p>
+        <div class="legend" id="legend"></div>
+      </div>
+
+      <!-- панель показа шагов -->
+      <div class="card hidden" id="playCard">
+        <h2 id="phaseName">—</h2>
+        <p style="margin:-6px 0 12px;color:var(--muted);font-size:12.5px" id="phaseHint"></p>
+        <div class="algo" id="algoBox">
+          <div class="algo-head"><span id="algoName"></span> <span class="algo-seq" id="algoSeq"></span></div>
+          <div class="algo-desc" id="algoDesc"></div>
+        </div>
+        <div class="move-big">
+          <div class="move-glyph" id="moveGlyph">—</div>
+          <div class="arrow" id="moveArrow"></div>
+          <div class="move-desc" id="moveDesc"></div>
+        </div>
+        <div class="counter" id="counter"></div>
+        <div class="bar"><span id="progress"></span></div>
+        <ol class="phases" id="phaseList"></ol>
+        <div style="margin-top:14px">
+          <h2>Текущий алгоритм целиком</h2>
+          <div class="seq" id="seq"></div>
+        </div>
+        <p style="margin:14px 0 0;color:var(--muted);font-size:12px">
+          Клавиши: <kbd>←</kbd> <kbd>→</kbd> шаг · <kbd>Пробел</kbd> старт/пауза
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="cube.js"></script>
+<script src="solver.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
