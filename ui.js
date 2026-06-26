@@ -65,11 +65,11 @@
                         'Разворот верхних углов','Расстановка верхних углов','Расстановка верхних рёбер'];
 
   // Animate a move sequence on the 3D cube starting from a solved cube, then restore.
-  function demoSequence(moves){
+  function demoSequence(moves, startState){
     if (demoRunning || animating) return;
     demoRunning = true;
     var prevFolded = folded; folded = true; apply3D();
-    var st = Cube.solved();
+    var st = startState ? Cube.clone(startState) : Cube.solved();
     render3Dfc(Cube.toFacelets(st));
     var i = 0;
     (function step(){
@@ -180,29 +180,52 @@
     }
     return null;
   }
+  // Granular case for the current LL step: pattern + how-to + the exact moves.
+  function detectCase(st, phase){
+    if (phase==='Крест сверху'){
+      var or=[0,1,2,3].filter(function(i){ return st.eo[i]===0; });
+      var line = or.length===2 && ((or[0]===0&&or[1]===2) || (or[0]===1&&or[1]===3));
+      var ans = or.length===0 ? 'Точка' : (or.length>=4 ? 'Крест' : (line ? 'Линия' : 'Уголок'));
+      var ex = {
+        'Точка':'Ни одно верхнее ребро не развёрнуто. Делай F R U R′ U′ F′ — точка превратится в уголок или линию, затем повтори с нужным доворотом → крест.',
+        'Уголок':'Два соседних ребра развёрнуты («уголок»). Держи их сзади и слева, делай F R U R′ U′ F′ → крест.',
+        'Линия':'Два противоположных ребра развёрнуты («линия»). Держи линию горизонтально, делай F R U R′ U′ F′ → крест.'
+      }[ans] || '';
+      return { q:'Какой узор верхних рёбер?', opts:['Точка','Уголок','Линия'], ans:ans, explain:ex };
+    }
+    if (phase==='Разворот верхних углов'){
+      var c=[0,1,2,3].filter(function(i){ return st.co[i]===0; }).length;
+      return { q:'Сколько верхних углов уже смотрят верхним цветом вверх?', opts:['0','1','2'], ans:String(Math.min(c,2)),
+        explain:'Развёрнуто углов: '+c+'. Приёмом Sune (R U R′ U R U2 R′) доворачивай — хватает 1–2 повторов с доворотом верха, пока вся грань не станет одного цвета.' };
+    }
+    return { q:'Какой шаг последнего слоя нужен?', opts:LL_ORDER, ans:phase, explain:(LL_INFO[phase]?LL_INFO[phase].tell:'') };
+  }
   function buildRecognize(lp){
-    lp.innerHTML='<h3>Узнай случай</h3><p class="muted">Кубик собран на 2 слоя. Посмотри на верх (покрути 3D) и определи, какой шаг последнего слоя сейчас нужен.</p><div id="recQ"></div>';
+    lp.innerHTML='<h3>Узнай случай</h3><p class="muted">Кубик собран на 2 слоя. Посмотри на верх (покрути 3D) и определи узор последнего слоя — что это и что делать.</p><div id="recQ"></div>';
     nextRecognize();
   }
   function nextRecognize(){
     var c=genLLCase(), q=$('recQ'); if(!q) return;
     if(!c){ q.innerHTML='Не удалось подобрать случай.'; return; }
     setPaintFromState(c.st); renderInput();
-    recAnswer=c.answer; recDone=false;
-    q.innerHTML='<div class="demo-row" id="recOpts"></div><div id="recFb" style="margin-top:8px;font-size:13px"></div>';
+    var ci=detectCase(c.st, c.answer);
+    recAnswer=ci.ans; recDone=false; recCtx={ st:c.st, explain:ci.explain };
+    q.innerHTML='<p style="margin:0 0 6px;font-size:13px">'+ci.q+'</p><div class="demo-row" id="recOpts"></div><div id="recFb" style="margin-top:8px;font-size:13px"></div>';
     var opts=q.querySelector('#recOpts');
-    LL_ORDER.forEach(function(name){
+    ci.opts.forEach(function(name){
       var b=document.createElement('button'); b.textContent=name; b.style.minWidth='auto';
       b.addEventListener('click', function(){ answerRecognize(name); }); opts.appendChild(b);
     });
   }
   function answerRecognize(name){
     if(recDone) return; recDone=true;
-    var ok=(name===recAnswer), info=LL_INFO[recAnswer], fb=$('recFb');
-    fb.innerHTML=(ok?'<b style="color:var(--good)">Верно!</b> ':'<b style="color:var(--bad)">Не то.</b> Нужен: <b>'+recAnswer+'</b>. ')+
-      info.tell+'<br>Алгоритм: <span class="algo-row-s">'+info.alg+'</span> '+
+    var ok=(name===recAnswer), fb=$('recFb');
+    var res=Solver.solve(recCtx.st), mv=[];           // exact moves for this case
+    if(res.phases.length) res.phases[0].groups.forEach(function(g){ mv=mv.concat(g.moves); });
+    fb.innerHTML=(ok?'<b style="color:var(--good)">Верно!</b> ':'<b style="color:var(--bad)">Не то — это «'+recAnswer+'». </b>')+
+      recCtx.explain+'<br>Ходы для этого случая: <span class="algo-row-s">'+(mv.join(' ')||'—')+'</span> '+
       '<button class="ghost play" id="recPlay">▶</button> &nbsp; <button class="ghost" id="recNext">Следующий ▶</button>';
-    $('recPlay').addEventListener('click', function(){ demoSequence(info.alg.split(/\s+/)); });
+    $('recPlay').addEventListener('click', function(){ demoSequence(mv, recCtx.st); });
     $('recNext').addEventListener('click', nextRecognize);
   }
 
@@ -264,7 +287,7 @@
   var rx = -24, ry = -32, folded = true, dragging = false, lastX = 0, lastY = 0, startX = 0, startY = 0, moved = false;
   // learning mode state
   var hintMode = false, revealed = false, demoRunning = false;
-  var recAnswer = null, recDone = false;                 // recognition quiz
+  var recAnswer = null, recDone = false, recCtx = null;  // recognition quiz
   var trainerActive = false, trainerPhase = '', usedHint = false; // trainer/progress
   var inTrainer = false, savedCube = null;               // trainer session + backup of the user's cube
   var MASTERY = {};
