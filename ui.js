@@ -14,6 +14,32 @@
   function persistColors(){ try{ localStorage.setItem('rbk-colors', JSON.stringify(COLORS)); }catch(e){} }
   function persistCube(){ try{ localStorage.setItem('rbk-cube', JSON.stringify(paint)); }catch(e){} }
   function loadCube(){ try{ var a=JSON.parse(localStorage.getItem('rbk-cube')||'null'); if(a&&a.length===54){ for(var i=0;i<54;i++) paint[i]=a[i]; return true; } }catch(e){} return false; }
+
+  // ---- share link: 54 color keys packed into the URL hash (#c=...), null → '-' ----
+  function encodeShare(){ var s=''; for(var i=0;i<54;i++){ var k=paint[i]; s+=(k&&'WRYPKN'.indexOf(k)>=0)?k:'-'; } return s; }
+  function applyShareFromHash(){
+    var m=(location.hash||'').match(/c=([WRYPKN\-]{54})/);
+    if(!m) return false;
+    for(var i=0;i<54;i++){ var ch=m[1].charAt(i); paint[i]=(ch==='-')?null:ch; }
+    return true;
+  }
+  function shareLink(){
+    var url=location.origin+location.pathname+'#c='+encodeShare();
+    function ok(){ msg('Ссылка скопирована — позиция кубика зашита в неё.','ok'); }
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(ok,function(){ prompt('Скопируйте ссылку:',url); });
+    else prompt('Скопируйте ссылку:',url);
+  }
+  // ---- apply a scramble typed as moves (R U R' U2 ...) onto a solved cube ----
+  function applyScramble(text){
+    var toks=(text||'').trim().split(/\s+/).filter(Boolean);
+    if(!toks.length){ msg('Введите ходы, например: R U R′ U′'); return; }
+    for(var i=0;i<toks.length;i++) if(!Cube.MOVES[toks[i]]){ msg('Непонятный ход: «'+toks[i]+'». Допустимы U R F D L B с ′ или 2.'); return; }
+    var st=Cube.applySeq(Cube.solved(), toks), fc=Cube.toFacelets(st);
+    for(var j=0;j<54;j++) paint[j]=SOLVED[fc[j]];
+    clearMsg(); renderInput();
+  }
+  // ---- colour-blind aid: show each sticker's colour-key letter on top ----
+  function setLetters(on){ document.body.classList.toggle('show-letters', !!on); try{ localStorage.setItem('rbk-letters', on?'1':''); }catch(e){} }
   function loadColors(){
     try{
       var arr=JSON.parse(localStorage.getItem('rbk-colors')||'null'); if(!arr) return;
@@ -124,12 +150,12 @@
     apply3D();
   }
   function render3D(){
-    for(var i=0;i<54;i++){ var st=face3dEls[i]; if(st) st.className='st3 '+(paint[i]?('s-'+paint[i]):'s-empty'); }
+    for(var i=0;i<54;i++){ var st=face3dEls[i]; if(st){ st.className='st3 '+(paint[i]?('s-'+paint[i]):'s-empty'); st.dataset.k=paint[i]||''; } }
   }
   // render the 3D cube from a solve frame (face letters → the user's colors)
   function render3Dfc(fc){
     var l2c=letterToColor();
-    for(var i=0;i<54;i++){ var st=face3dEls[i]; if(st) st.className='st3 s-'+l2c[fc[i]]; }
+    for(var i=0;i<54;i++){ var st=face3dEls[i]; if(st){ var k=l2c[fc[i]]; st.className='st3 s-'+k; st.dataset.k=k; } }
   }
   // spin one face around its outward normal as a visual cue for the current move.
   // local +Z of each face IS its outward normal, so rotateZ(+90)=clockwise-from-outside for all faces.
@@ -188,6 +214,7 @@
     for (var i=0;i<54;i++){
       var st=stickerEls[i]; if(!st) continue;
       st.className = paintClass(paint[i]) + ((i%9===4)?' center':'');
+      st.dataset.k = paint[i]||'';
     }
     buildLegend();
     render3D();
@@ -199,8 +226,8 @@
     for (var i=0;i<54;i++){
       var st=stickerEls[i]; if(!st) continue;
       var key = l2c[fc[i]];
-      var c = 'sticker s-'+key + ((i%9===4)?' center':'');
-      st.className=c;
+      st.className = 'sticker s-'+key + ((i%9===4)?' center':'');
+      st.dataset.k = key;
     }
     if (hiFace){
       var fdef = FACES.filter(function(f){return f.f===hiFace;})[0];
@@ -496,8 +523,14 @@
   function init(){
     loadColors(); applyColorVars();
     buildNet(); buildPalette(); buildColorEditor(); build3D();
-    if (!loadCube()) setSolved();   // restore the last entered cube, else a solved one
+    // priority: shared position in URL → last entered cube → solved
+    if (!applyShareFromHash() && !loadCube()) setSolved();
+    try{ if(localStorage.getItem('rbk-letters')){ document.body.classList.add('show-letters'); var cl=$('chkLetters'); if(cl) cl.checked=true; } }catch(e){}
     renderInput();
+    $('btnShare').addEventListener('click', shareLink);
+    $('btnApplyScramble').addEventListener('click', function(){ applyScramble($('scrambleInput').value); });
+    $('scrambleInput').addEventListener('keydown', function(e){ if(e.key==='Enter') applyScramble(this.value); });
+    $('chkLetters').addEventListener('change', function(){ setLetters(this.checked); });
     $('btnColors').addEventListener('click', function(){
       var ed=$('colorEditor'); ed.classList.toggle('hidden');
       $('btnColors').textContent = (ed.classList.contains('hidden')?'🎨 Настроить цвета':'🎨 Скрыть настройку');

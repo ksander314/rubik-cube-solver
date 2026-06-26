@@ -318,4 +318,5 @@ if (typeof require !== 'undefined' && require.main === module) {
   }
   var dt=Date.now()-t0;
   console.log('SOLVE: '+(N-fails)+'/'+N+' ok, fails='+fails+', avgMoves='+(sumLen/N).toFixed(1)+', maxMoves='+maxLen+', total='+dt+'ms, worstCube='+worst+'ms(#'+worstI+')');
+  process.exit(fails?1:0);
 }

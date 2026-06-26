@@ -85,6 +85,21 @@ h1 .sub{ color:var(--muted); font-weight:400; font-size:14px; }
 .ce-row input[type=text]{ flex:1; min-width:0; background:var(--panel2); border:1px solid var(--line); color:var(--ink); border-radius:6px; padding:6px 9px; font:inherit; font-size:13px; }
 .ce-reset{ justify-self:start; margin-top:2px; font-size:12.5px; padding:6px 10px; }
 
+/* ---- tool row: scramble input / share / letters ---- */
+.toolrow{ align-items:center; }
+.toolrow input[type=text]{ flex:1 1 160px; min-width:0; background:var(--panel2); border:1px solid var(--line); color:var(--ink); border-radius:8px; padding:8px 10px; font:inherit; font-size:13px; }
+.toolrow input[type=text]::placeholder{ color:var(--muted); }
+.toggle{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--muted); cursor:pointer; user-select:none; }
+.toggle input{ accent-color:var(--accent); }
+
+/* ---- colour-blind aid: letter on every sticker ---- */
+.st3{ position:relative; }
+.show-letters .sticker::after, .show-letters .st3::after{
+  content:attr(data-k); position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  font:700 11px/1 ui-monospace,Menlo,monospace; color:#fff; mix-blend-mode:difference; pointer-events:none;
+}
+
 /* ---- buttons ---- */
 .row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
 button{
