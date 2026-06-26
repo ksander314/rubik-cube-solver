@@ -44,7 +44,7 @@
 
   // ---- QoL: theme, animation speed, undo ----
   function setTheme(light){ document.body.classList.toggle('light', !!light); var b=$('btnTheme'); if(b) b.textContent = light?'☀':'☾'; try{ localStorage.setItem('rbk-theme', light?'1':''); }catch(e){} }
-  function setSpeed(ms){ DUR3 = ms; try{ localStorage.setItem('rbk-speed', String(ms)); }catch(e){} }
+  function setSpeed(ms){ DUR3 = ms; try{ localStorage.setItem('rbk-speed', String(ms)); }catch(e){} if(playTimer){ stopPlay(); startPlay(); } }
   var painthist = [];
   function pushHistory(){ painthist.push(paint.slice()); if(painthist.length>80) painthist.shift(); }
   function undo(){ if(solution || !painthist.length) return; paint = painthist.pop(); renderInput(); }
@@ -101,11 +101,13 @@
   function startTrainer(name){
     var st=makePhaseStart(name);
     if (!st){ msg('Не удалось подобрать случай — попробуйте ещё раз.'); return; }
+    savedCube = paint.slice();                                    // back up the user's cube
     setPaintFromState(st);
     hintMode=true; var ch=$('chkHint'); if(ch) ch.checked=true;   // recall first
     $('learnPanel').classList.add('hidden');
     doSolve();   // earlier phases already solved → показ начинается с нужного этапа
-    trainerActive=true; trainerPhase=name; usedHint=false;        // for progress auto-credit
+    inTrainer=true; trainerActive=true; trainerPhase=name; usedHint=false;
+    $('btnEdit').textContent='✕ Выйти из тренажёра';
   }
 
   // ---- learning panel (notation / reference / trainer share one container) ----
@@ -264,6 +266,7 @@
   var hintMode = false, revealed = false, demoRunning = false;
   var recAnswer = null, recDone = false;                 // recognition quiz
   var trainerActive = false, trainerPhase = '', usedHint = false; // trainer/progress
+  var inTrainer = false, savedCube = null;               // trainer session + backup of the user's cube
   var MASTERY = {};
 
   var $ = function(id){ return document.getElementById(id); };
@@ -542,7 +545,7 @@
   }
 
   function doSolve(){
-    clearMsg(); clearBad(); trainerActive=false;   // normal solve isn't a trainer session
+    clearMsg(); clearBad(); trainerActive=false; inTrainer=false;   // normal solve isn't a trainer session
     var r=readCube();
     if (r.error){ if(r.bad) r.bad.forEach(function(p){ if(stickerEls[p]) stickerEls[p].classList.add('bad'); }); msg(r.error); return; }
     var state=r.state, i;
@@ -620,18 +623,25 @@
     $('btnFold').textContent = 'Развернуть в плоскость ▦';
     $('cubeTitle').textContent = 'Кубик 3D — поворачивается по шагам';
     $('foldHint').textContent = 'Тяните мышкой, чтобы повернуть';
+    $('btnEdit').textContent = '✎ Изменить кубик';   // default; startTrainer overrides for a trainer session
     ensureOrientBanner();
     renderPlayback();
   }
   function exitPlayback(){
     stopPlay();
     solution=null; trainerActive=false;
+    if (inTrainer){                                  // leaving a trainer session: restore the user's cube
+      if (savedCube){ paint = savedCube.slice(); savedCube=null; }
+      hintMode=false; var ch=$('chkHint'); if(ch) ch.checked=false;
+      inTrainer=false;
+    }
     $('inputControls').classList.remove('hidden');
     $('helpCard').classList.remove('hidden');
     $('playControls').classList.add('hidden');
     $('playCard').classList.add('hidden');
     $('cubeTitle').textContent = 'Кубик 3D ⇄ развёртка';
     $('foldHint').textContent = 'Тяните — повернуть · клик — покрасить';
+    $('btnEdit').textContent = '✎ Изменить кубик';
     renderInput();
   }
   function ensureOrientBanner(){
@@ -757,7 +767,7 @@
   function startPlay(){
     if (ptr>=solution.total) ptr=0;
     $('btnPlay').textContent='⏸ Пауза';
-    playTimer=setInterval(function(){ if(ptr>=solution.total){ stopPlay(); } else next(); }, 800);
+    playTimer=setInterval(function(){ if(ptr>=solution.total){ stopPlay(); } else next(); }, DUR3+450); // pace follows the speed slider
   }
   function stopPlay(){ if(playTimer){ clearInterval(playTimer); playTimer=null; } $('btnPlay').textContent='Автопоказ'; }
   function togglePlay(){ if(playTimer) stopPlay(); else startPlay(); }
