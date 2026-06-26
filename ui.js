@@ -97,6 +97,7 @@
     hintMode=true; var ch=$('chkHint'); if(ch) ch.checked=true;   // recall first
     $('learnPanel').classList.add('hidden');
     doSolve();   // earlier phases already solved → показ начинается с нужного этапа
+    trainerActive=true; trainerPhase=name; usedHint=false;        // for progress auto-credit
   }
 
   // ---- learning panel (notation / reference / trainer share one container) ----
@@ -108,6 +109,8 @@
     if (which==='notation') buildNotation(lp);
     else if (which==='reference') buildReference(lp);
     else if (which==='trainer') buildTrainer(lp);
+    else if (which==='recognize') buildRecognize(lp);
+    else if (which==='progress') buildProgress(lp);
   }
   function buildNotation(lp){
     lp.innerHTML =
@@ -143,6 +146,77 @@
       var b=document.createElement('button'); b.textContent=name; b.addEventListener('click', function(){ startTrainer(name); }); row.appendChild(b);
     });
     lp.appendChild(row);
+  }
+
+  // ---- recognition quiz: which last-layer step does this cube need? ----
+  var F2L_PHASES={'Крест снизу':1,'Углы снизу':1,'Средний слой':1};
+  var LL_ORDER=['Крест сверху','Разворот верхних углов','Расстановка верхних углов','Расстановка верхних рёбер'];
+  var LL_INFO={
+    'Крест сверху':{alg:"F R U R' U' F'", tell:'Верхние рёбра ещё не образуют крест верхнего цвета (точка / уголок / линия).'},
+    'Разворот верхних углов':{alg:"R U R' U R U2 R'", tell:'Крест есть, но не все углы смотрят верхним цветом вверх.'},
+    'Расстановка верхних углов':{alg:"R' F R' B2 R F' R' B2 R2", tell:'Верх одного цвета, но углы стоят не на своих местах (бока не совпадают).'},
+    'Расстановка верхних рёбер':{alg:"R U' R U R U R U' R' U' R2", tell:'Углы на местах — осталось переставить рёбра.'}
+  };
+  function genLLCase(){
+    for(var t=0;t<80;t++){
+      var scr=Cube.solved(); for(var k=0;k<25;k++) scr=Cube.applyMove(scr,Cube.MOVES[Cube.ALL_MOVES[(Math.random()*18)|0]]);
+      var res=Solver.solve(scr), st=Cube.clone(scr);
+      for(var p=0;p<res.phases.length;p++){
+        if(F2L_PHASES[res.phases[p].name]) res.phases[p].groups.forEach(function(g){ g.moves.forEach(function(mv){ st=Cube.applyMove(st,Cube.MOVES[mv]); }); });
+        else break;
+      }
+      var res2=Solver.solve(st);
+      if(res2.phases.length) return { st:st, answer:res2.phases[0].name };
+    }
+    return null;
+  }
+  function buildRecognize(lp){
+    lp.innerHTML='<h3>Узнай случай</h3><p class="muted">Кубик собран на 2 слоя. Посмотри на верх (покрути 3D) и определи, какой шаг последнего слоя сейчас нужен.</p><div id="recQ"></div>';
+    nextRecognize();
+  }
+  function nextRecognize(){
+    var c=genLLCase(), q=$('recQ'); if(!q) return;
+    if(!c){ q.innerHTML='Не удалось подобрать случай.'; return; }
+    setPaintFromState(c.st); renderInput();
+    recAnswer=c.answer; recDone=false;
+    q.innerHTML='<div class="demo-row" id="recOpts"></div><div id="recFb" style="margin-top:8px;font-size:13px"></div>';
+    var opts=q.querySelector('#recOpts');
+    LL_ORDER.forEach(function(name){
+      var b=document.createElement('button'); b.textContent=name; b.style.minWidth='auto';
+      b.addEventListener('click', function(){ answerRecognize(name); }); opts.appendChild(b);
+    });
+  }
+  function answerRecognize(name){
+    if(recDone) return; recDone=true;
+    var ok=(name===recAnswer), info=LL_INFO[recAnswer], fb=$('recFb');
+    fb.innerHTML=(ok?'<b style="color:var(--good)">Верно!</b> ':'<b style="color:var(--bad)">Не то.</b> Нужен: <b>'+recAnswer+'</b>. ')+
+      info.tell+'<br>Алгоритм: <span class="algo-row-s">'+info.alg+'</span> '+
+      '<button class="ghost play" id="recPlay">▶</button> &nbsp; <button class="ghost" id="recNext">Следующий ▶</button>';
+    $('recPlay').addEventListener('click', function(){ demoSequence(info.alg.split(/\s+/)); });
+    $('recNext').addEventListener('click', nextRecognize);
+  }
+
+  // ---- progress tracker (auto-credit when a phase is solved unaided) ----
+  function loadMastery(){ try{ MASTERY=JSON.parse(localStorage.getItem('rbk-mastery')||'{}')||{}; }catch(e){ MASTERY={}; } }
+  function saveMastery(){ try{ localStorage.setItem('rbk-mastery', JSON.stringify(MASTERY)); }catch(e){} }
+  function markMastered(name){ MASTERY[name]=(MASTERY[name]||0)+1; saveMastery(); showToast('✓ Этап «'+name+'» собран без подсказки!'); }
+  function showToast(text){
+    var t=$('toast'); if(!t){ t=document.createElement('div'); t.id='toast'; t.className='toast'; document.body.appendChild(t); }
+    t.textContent=text; t.classList.add('show');
+    clearTimeout(showToast._t); showToast._t=setTimeout(function(){ t.classList.remove('show'); }, 2600);
+  }
+  function buildProgress(lp){
+    loadMastery();
+    var done=TRAINER_PHASES.filter(function(n){ return MASTERY[n]>0; }).length;
+    lp.innerHTML='<h3>Прогресс</h3><p class="muted">Этап засчитывается, когда ты собрал его в тренажёре <b>без «Показать ход»</b>. Освоено: '+done+' / '+TRAINER_PHASES.length+'.</p>';
+    TRAINER_PHASES.forEach(function(n,i){
+      var c=MASTERY[n]||0, row=document.createElement('div'); row.className='prog-row';
+      row.innerHTML='<span>'+(c>0?'✓':'○')+' '+(i+1)+'. '+n+'</span><span class="muted">'+(c>0?('×'+c):'')+'</span>';
+      lp.appendChild(row);
+    });
+    var rs=document.createElement('button'); rs.className='ghost'; rs.style.marginTop='8px'; rs.textContent='Сбросить прогресс';
+    rs.addEventListener('click', function(){ MASTERY={}; saveMastery(); buildProgress(lp); });
+    lp.appendChild(rs);
   }
   function loadColors(){
     try{
@@ -180,6 +254,9 @@
   var rx = -24, ry = -32, folded = true, dragging = false, lastX = 0, lastY = 0, startX = 0, startY = 0, moved = false;
   // learning mode state
   var hintMode = false, revealed = false, demoRunning = false;
+  var recAnswer = null, recDone = false;                 // recognition quiz
+  var trainerActive = false, trainerPhase = '', usedHint = false; // trainer/progress
+  var MASTERY = {};
 
   var $ = function(id){ return document.getElementById(id); };
 
@@ -425,7 +502,7 @@
   }
 
   function doSolve(){
-    clearMsg(); clearBad();
+    clearMsg(); clearBad(); trainerActive=false;   // normal solve isn't a trainer session
     var r=readCube();
     if (r.error){ if(r.bad) r.bad.forEach(function(p){ if(stickerEls[p]) stickerEls[p].classList.add('bad'); }); msg(r.error); return; }
     var state=r.state, i;
@@ -508,7 +585,7 @@
   }
   function exitPlayback(){
     stopPlay();
-    solution=null;
+    solution=null; trainerActive=false;
     $('inputControls').classList.remove('hidden');
     $('helpCard').classList.remove('hidden');
     $('playControls').classList.add('hidden');
@@ -622,7 +699,14 @@
   function next(){
     if(animating) return;
     if(ptr>=solution.total){ stopPlay(); return; }
-    animateMove(solution.steps[ptr].move, function(){ ptr++; revealed=false; renderPlayback(); });
+    animateMove(solution.steps[ptr].move, function(){
+      ptr++; revealed=false;
+      if (trainerActive && solution.ranges.length && ptr>=solution.ranges[0].end){  // finished the trained phase
+        if (!usedHint) markMastered(trainerPhase);
+        trainerActive=false;
+      }
+      renderPlayback();
+    });
   }
   function prev(){ if(animating) return; if(ptr>0){ ptr--; revealed=false; renderPlayback(); } }
   function startPlay(){
@@ -635,7 +719,7 @@
 
   // ---------- wire up ----------
   function init(){
-    loadColors(); applyColorVars();
+    loadColors(); applyColorVars(); loadMastery();
     buildNet(); buildPalette(); buildColorEditor(); build3D();
     // priority: shared position in URL → last entered cube → solved
     if (!applyShareFromHash() && !loadCube()) setSolved();
@@ -645,8 +729,10 @@
     $('btnNotation').addEventListener('click', function(){ toggleLearn('notation'); });
     $('btnReference').addEventListener('click', function(){ toggleLearn('reference'); });
     $('btnTrainer').addEventListener('click', function(){ toggleLearn('trainer'); });
+    $('btnRecognize').addEventListener('click', function(){ toggleLearn('recognize'); });
+    $('btnProgress').addEventListener('click', function(){ toggleLearn('progress'); });
     $('chkHint').addEventListener('change', function(){ hintMode=this.checked; revealed=false; if(solution) renderPlayback(); });
-    $('btnReveal').addEventListener('click', function(){ revealed=true; renderPlayback(); });
+    $('btnReveal').addEventListener('click', function(){ revealed=true; if(trainerActive) usedHint=true; renderPlayback(); });
     $('btnApplyScramble').addEventListener('click', function(){ applyScramble($('scrambleInput').value); });
     $('scrambleInput').addEventListener('keydown', function(e){ if(e.key==='Enter') applyScramble(this.value); });
     $('chkLetters').addEventListener('change', function(){ setLetters(this.checked); });

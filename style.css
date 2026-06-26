@@ -105,6 +105,9 @@ h1 .sub{ color:var(--muted); font-weight:400; font-size:14px; }
 .algo-row-h .play{ padding:3px 10px; }
 .algo-row-s{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px; color:var(--accent); margin:3px 0; }
 .algo-row-w{ font-size:12.5px; }
+.prog-row{ display:flex; justify-content:space-between; padding:4px 0; font-size:13px; }
+.toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:var(--good); color:#06231a; padding:10px 16px; border-radius:10px; font-weight:600; font-size:13.5px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:50; box-shadow:0 8px 24px rgba(0,0,0,.4); }
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
 /* ---- colour-blind aid: letter on every sticker ---- */
 .st3{ position:relative; }
