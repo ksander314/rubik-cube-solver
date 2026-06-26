@@ -646,7 +646,7 @@
     $('btnFold').textContent = 'Развернуть в плоскость ▦';
     $('cubeTitle').textContent = 'Кубик 3D — поворачивается по шагам';
     $('foldHint').textContent = 'Тяните мышкой, чтобы повернуть';
-    $('btnEdit').textContent = '✎ Изменить кубик';   // default; startTrainer overrides for a trainer session
+    $('btnEdit').textContent = '✕ Выйти к вводу';   // default; startTrainer overrides for a trainer session
     ensureOrientBanner();
     renderPlayback();
   }
@@ -664,7 +664,7 @@
     $('playCard').classList.add('hidden');
     $('cubeTitle').textContent = 'Кубик 3D ⇄ развёртка';
     $('foldHint').textContent = 'Тяните — повернуть · клик — покрасить';
-    $('btnEdit').textContent = '✎ Изменить кубик';
+    $('btnEdit').textContent = '✕ Выйти к вводу';
     renderInput();
   }
   function ensureOrientBanner(){
