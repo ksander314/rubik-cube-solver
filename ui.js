@@ -44,6 +44,7 @@
 
   // ---- QoL: theme, animation speed, undo ----
   function setTheme(light){ document.body.classList.toggle('light', !!light); var b=$('btnTheme'); if(b) b.textContent = light?'☀':'☾'; try{ localStorage.setItem('rbk-theme', light?'1':''); }catch(e){} }
+  function setFaceLabels(on){ document.body.classList.toggle('face-labels', !!on); try{ localStorage.setItem('rbk-facelabels', on?'1':'0'); }catch(e){} }
   function setSpeed(ms){ DUR3 = ms; try{ localStorage.setItem('rbk-speed', String(ms)); }catch(e){} if(playTimer){ stopPlay(); startPlay(); } }
   var painthist = [];
   function pushHistory(){ painthist.push(paint.slice()); if(painthist.length>80) painthist.shift(); }
@@ -386,9 +387,10 @@
   // axis + sign so a quarter turn looks clockwise-from-outside (CSS is left-handed, Y down).
   var AXIS={U:'Y',D:'Y',F:'Z',B:'Z',R:'X',L:'X'}, SIGN={U:-1,D:1,F:1,B:-1,R:1,L:-1};
 
+  var CENTER_LET={4:'U',13:'R',22:'F',31:'D',40:'L',49:'B'};  // face-letter for each centre sticker
   function build3D(){
     var cube=$('cube3d'); if(!cube) return; buildTransforms(); cube.innerHTML='';
-    for(var g=0;g<54;g++){ var st=document.createElement('div'); st.className='st3'; st.dataset.idx=g; face3dEls[g]=st; cube.appendChild(st); }
+    for(var g=0;g<54;g++){ var st=document.createElement('div'); st.className='st3'; st.dataset.idx=g; if(CENTER_LET[g]) st.dataset.face=CENTER_LET[g]; face3dEls[g]=st; cube.appendChild(st); }
     apply3D();
   }
   function render3D(){
@@ -801,6 +803,8 @@
   function init(){
     loadColors(); applyColorVars(); loadMastery();
     try{ setTheme(localStorage.getItem('rbk-theme')==='1'); var sp0=parseInt(localStorage.getItem('rbk-speed'),10); if(sp0) DUR3=sp0; }catch(e){}
+    var fl='1'; try{ fl=localStorage.getItem('rbk-facelabels')||'1'; }catch(e){}  // face letters on the 3D cube, default on
+    setFaceLabels(fl!=='0');
     buildNet(); buildPalette(); buildColorEditor(); build3D();
     // priority: shared position in URL → last entered cube → solved
     if (!applyShareFromHash() && !loadCube()) setSolved();
@@ -817,6 +821,7 @@
     $('btnApplyScramble').addEventListener('click', function(){ applyScramble($('scrambleInput').value); });
     $('scrambleInput').addEventListener('keydown', function(e){ if(e.key==='Enter') applyScramble(this.value); });
     $('chkLetters').addEventListener('change', function(){ setLetters(this.checked); });
+    var cfl=$('chkFaceLabels'); if(cfl){ cfl.checked = document.body.classList.contains('face-labels'); cfl.addEventListener('change', function(){ setFaceLabels(this.checked); }); }
     $('btnColors').addEventListener('click', function(){
       var ed=$('colorEditor'); ed.classList.toggle('hidden');
       $('btnColors').textContent = (ed.classList.contains('hidden')?'🎨 Настроить цвета':'🎨 Скрыть настройку');

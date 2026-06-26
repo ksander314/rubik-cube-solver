@@ -8,8 +8,8 @@
 <meta property="og:title" content="Сборка кубика Рубика — пошагово">
 <meta property="og:description" content="Задайте свой кубик и соберите его по шагам — с 3D-кубиком, анимацией ходов и понятными алгоритмами.">
 <meta property="og:type" content="website">
-<link rel="icon" href="favicon.svg?v=20260626n">
-<link rel="stylesheet" href="style.css?v=20260626n">
+<link rel="icon" href="favicon.svg?v=20260626o">
+<link rel="stylesheet" href="style.css?v=20260626o">
 </head>
 <body>
 <div class="wrap">
@@ -74,8 +74,9 @@
         </div>
         <div class="row" style="margin-top:6px">
           <button id="btnFold">Развернуть в плоскость ▦</button>
-          <span class="hint" id="foldHint" style="align-self:center">Тяните — повернуть · клик — покрасить</span>
+          <label class="toggle"><input type="checkbox" id="chkFaceLabels" checked> буквы граней (F,R,…)</label>
         </div>
+        <div class="hint" id="foldHint" style="margin-top:4px">Тяните — повернуть · клик — покрасить</div>
       </div>
 
       <!-- помощь по вводу -->
@@ -134,8 +135,8 @@
   </div>
 </div>
 
-<script src="cube.js?v=20260626n"></script>
-<script src="solver.js?v=20260626n"></script>
-<script src="ui.js?v=20260626n"></script>
+<script src="cube.js?v=20260626o"></script>
+<script src="solver.js?v=20260626o"></script>
+<script src="ui.js?v=20260626o"></script>
 </body>
 </html>
