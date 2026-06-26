@@ -321,58 +321,78 @@
   }
 
   // ---------- interactive 3D cube ----------
-  function build3D(){
-    var cube=$('cube3d'); if(!cube) return; cube.innerHTML='';
-    var faces=[{f:'U',base:0},{f:'D',base:27},{f:'F',base:18},{f:'B',base:45},{f:'L',base:36},{f:'R',base:9}];
-    faces.forEach(function(face){
-      var fd=document.createElement('div'); fd.className='face3d f-'+face.f; fd.dataset.l=face.f;
-      face3dFaceEls[face.f]=fd;
-      for(var i=0;i<9;i++){ var st=document.createElement('div'); st.className='st3'; st.dataset.idx=face.base+i; face3dEls[face.base+i]=st; fd.appendChild(st); }
-      cube.appendChild(fd);
+  // 54 individually-positioned stickers (children of #cube3d, centred on the cube
+  // centre) so a whole layer — face + the 12-sticker ring — can rotate as a rigid group.
+  var FS3=78, HALF3=39, STEP3=27, PAD3=6;
+  var FACEDEF=[{f:'U',base:0,rot:'rotateX(90deg) '},{f:'D',base:27,rot:'rotateX(-90deg) '},
+               {f:'F',base:18,rot:''},{f:'B',base:45,rot:'rotateY(180deg) '},
+               {f:'R',base:9,rot:'rotateY(90deg) '},{f:'L',base:36,rot:'rotateY(-90deg) '}];
+  var ST_BASE=new Array(54), ST_FLAT=new Array(54);
+  function buildTransforms(){
+    var fc={U:[0,-(FS3+PAD3)],D:[0,FS3+PAD3],F:[0,0],B:[2*(FS3+PAD3),0],R:[FS3+PAD3,0],L:[-(FS3+PAD3),0]};
+    FACEDEF.forEach(function(fd){
+      for(var i=0;i<9;i++){
+        var g=fd.base+i, dx=((i%3)-1)*STEP3, dy=(((i/3)|0)-1)*STEP3;
+        ST_BASE[g]=fd.rot+'translateZ('+HALF3+'px) translate('+dx+'px,'+dy+'px)';
+        ST_FLAT[g]='translate('+(fc[fd.f][0]+dx)+'px,'+(fc[fd.f][1]+dy)+'px)';
+      }
     });
+  }
+  // facelets in each turning layer = face's 9 + the 12-sticker ring (engine-derived).
+  var LAYER={
+    U:[0,1,2,3,4,5,6,7,8, 9,10,11,18,19,20,36,37,38,45,46,47],
+    D:[27,28,29,30,31,32,33,34,35, 15,16,17,24,25,26,42,43,44,51,52,53],
+    F:[18,19,20,21,22,23,24,25,26, 6,7,8,9,12,15,27,28,29,38,41,44],
+    B:[45,46,47,48,49,50,51,52,53, 0,1,2,11,14,17,33,34,35,36,39,42],
+    R:[9,10,11,12,13,14,15,16,17, 2,5,8,20,23,26,29,32,35,45,48,51],
+    L:[36,37,38,39,40,41,42,43,44, 0,3,6,18,21,24,27,30,33,47,50,53]
+  };
+  // axis + sign so a quarter turn looks clockwise-from-outside (CSS is left-handed, Y down).
+  var AXIS={U:'Y',D:'Y',F:'Z',B:'Z',R:'X',L:'X'}, SIGN={U:-1,D:1,F:1,B:-1,R:1,L:-1};
+
+  function build3D(){
+    var cube=$('cube3d'); if(!cube) return; buildTransforms(); cube.innerHTML='';
+    for(var g=0;g<54;g++){ var st=document.createElement('div'); st.className='st3'; st.dataset.idx=g; face3dEls[g]=st; cube.appendChild(st); }
     apply3D();
   }
   function render3D(){
     for(var i=0;i<54;i++){ var st=face3dEls[i]; if(st){ st.className='st3 '+(paint[i]?('s-'+paint[i]):'s-empty'); st.dataset.k=paint[i]||''; } }
   }
-  // render the 3D cube from a solve frame (face letters → the user's colors)
   function render3Dfc(fc){
     var l2c=letterToColor();
     for(var i=0;i<54;i++){ var st=face3dEls[i]; if(st){ var k=l2c[fc[i]]; st.className='st3 s-'+k; st.dataset.k=k; } }
   }
-  // spin one face around its outward normal as a visual cue for the current move.
-  // local +Z of each face IS its outward normal, so rotateZ(+90)=clockwise-from-outside for all faces.
-  var FACE_TX = {
-    U:'rotateX(90deg) translateZ(var(--h))',  D:'rotateX(-90deg) translateZ(var(--h))',
-    F:'translateZ(var(--h))',                  B:'rotateY(180deg) translateZ(var(--h))',
-    R:'rotateY(90deg) translateZ(var(--h))',   L:'rotateY(-90deg) translateZ(var(--h))'
-  };
   var animating = false;
+  // Rotate the whole layer rigidly, then snap to base positions and recolour to the
+  // new state (at 90° the rotated layer coincides with the base grid, so the snap is seamless).
   function animateMove(move, done){
-    var L=move[0], suf=move.slice(1), fd=face3dFaceEls[L];
-    if(!fd || !folded){ done(); return; }              // only animate the assembled cube
-    var deg = suf==='2' ? 180 : (suf==="'" ? -90 : 90);
-    animating = true;
-    fd.style.transition = 'transform .26s ease-in-out';
-    fd.style.transform = FACE_TX[L] + ' rotateZ(' + deg + 'deg)';
-    setTimeout(function(){ fd.style.transition=''; fd.style.transform=''; animating=false; done(); }, 270);
+    var L=move[0], suf=move.slice(1);
+    if(!folded || !LAYER[L]){ done(); return; }
+    var deg = SIGN[L]*(suf==='2'?180:(suf==="'"?-90:90));
+    var rot='rotate'+AXIS[L]+'('+deg+'deg) ';
+    animating=true;
+    LAYER[L].forEach(function(g){ var st=face3dEls[g]; st.style.transition='transform .26s ease-in-out'; st.style.transform=rot+ST_BASE[g]; });
+    setTimeout(function(){ LAYER[L].forEach(function(g){ var st=face3dEls[g]; st.style.transition=''; st.style.transform=ST_BASE[g]; }); animating=false; done(); }, 280);
+  }
+  function applyView(){
+    var cube=$('cube3d'); if(!cube) return;
+    cube.style.transform = folded ? ('rotateX('+rx+'deg) rotateY('+ry+'deg)') : 'scale(.62)';
   }
   function apply3D(){
-    var cube=$('cube3d'); if(!cube) return;
-    cube.classList.toggle('unfolded', !folded);
-    cube.style.transform = folded ? ('rotateX('+rx+'deg) rotateY('+ry+'deg)') : 'rotateX(0deg) rotateY(0deg) scale(.6)';
+    applyView();
+    for(var g=0;g<54;g++){ var st=face3dEls[g]; if(st) st.style.transform = folded ? ST_BASE[g] : ST_FLAT[g]; }
   }
   function toggleFold(){
     folded=!folded; apply3D();
     $('btnFold').textContent = folded ? 'Развернуть в плоскость ▦' : 'Свернуть в кубик ◳';
-    $('foldHint').textContent = folded ? 'Тяните мышкой, чтобы повернуть' : 'Это та же развёртка, что и слева';
+    $('foldHint').textContent = folded ? 'Тяните — повернуть · клик — покрасить' : 'Это та же развёртка, что и слева';
   }
   function ptXY(e){ var t=(e.touches&&e.touches[0])?e.touches[0]:e; return {x:t.clientX, y:t.clientY}; }
   function dragStart(e){ dragging=true; moved=false; var p=ptXY(e); startX=lastX=p.x; startY=lastY=p.y; }
   function dragMove(e){
     if(!dragging) return; var p=ptXY(e);
     if(Math.abs(p.x-startX)+Math.abs(p.y-startY)>6) moved=true;
-    if(folded){ ry+=(p.x-lastX)*0.5; rx-=(p.y-lastY)*0.5; rx=Math.max(-89,Math.min(89,rx)); lastX=p.x; lastY=p.y; apply3D(); }
+    if(folded){ ry+=(p.x-lastX)*0.5; rx-=(p.y-lastY)*0.5; rx=Math.max(-89,Math.min(89,rx)); lastX=p.x; lastY=p.y; applyView(); }
     if(e.cancelable && moved) e.preventDefault();
   }
   // A tap (no drag) on a 3D sticker paints it — only while editing (not during playback).
@@ -772,6 +792,7 @@
     get:function(i){ return paint[i]; },
     solve:doSolve,
     goto:function(n){ if(solution){ ptr=Math.max(0,Math.min(solution.total,n)); revealed=false; renderPlayback(); } },
+    _spin:function(move,deg){ var L=move[0]; if(!LAYER[L])return; var rot='rotate'+AXIS[L]+'('+deg+'deg) '; LAYER[L].forEach(function(g){ face3dEls[g].style.transition='none'; face3dEls[g].style.transform=rot+ST_BASE[g]; }); },
     total:function(){ return solution?solution.total:0; }
   };
 })();
