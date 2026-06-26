@@ -739,7 +739,12 @@
       renderPlayback();
     });
   }
-  function prev(){ if(animating) return; if(ptr>0){ ptr--; revealed=false; renderPlayback(); } }
+  function prev(){
+    if(animating || ptr<=0) return;
+    var mv=solution.steps[ptr-1].move;                       // the move that got us here
+    var inv = mv.length===1 ? mv+"'" : (mv[1]==="'" ? mv[0] : mv);  // undo it
+    animateMove(inv, function(){ ptr--; revealed=false; renderPlayback(); });
+  }
   function startPlay(){
     if (ptr>=solution.total) ptr=0;
     $('btnPlay').textContent='⏸ Пауза';
