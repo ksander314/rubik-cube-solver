@@ -260,6 +260,8 @@
   refreshNames();
   // Russian names of the six faces (kept alongside the standard U/R/F/D/L/B letters)
   var FACENAME = {U:'Верх', D:'Низ', F:'Перёд', B:'Зад', L:'Лево', R:'Право'};
+  // adjective form for instructions ("поверните ПРАВУЮ грань") — what the user actually sees
+  var FACE_ADJ = {U:'верхнюю', D:'нижнюю', F:'переднюю (к себе)', B:'заднюю', L:'левую', R:'правую'};
 
   // face letter -> global facelet base, center index, net class
   var FACES = [
@@ -711,8 +713,8 @@
         var mv=sol.steps[i].move, L=mv[0], suf=mv.slice(1);
         $('moveGlyph').textContent = mv;
         $('moveArrow').textContent = ARROW[suf];
-        $('moveDesc').innerHTML = '<b>Поверните грань '+L+' ('+FACENAME[L]+', '+NAME[m[L]]+') '+dirWord(suf)+'.</b>'+
-          '<div class="small">'+(suf==="2"?"Два поворота на четверть.":"Один поворот на четверть, глядя прямо на эту грань.")+'</div>';
+        $('moveDesc').innerHTML = '<b>Поверните '+FACE_ADJ[L]+' грань (центр — '+NAME[m[L]]+') '+dirWord(suf)+'.</b>'+
+          '<div class="small">'+(suf==="2"?"Два поворота на четверть.":"Один поворот на четверть, глядя прямо на эту грань.")+' Значок <b>'+mv+'</b> — это и есть эта грань в стандартной записи.</div>';
       }
     } else if (sol.defect){
       $('algoBox').style.display='none';
