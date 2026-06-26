@@ -44,8 +44,8 @@
   var ptr = 0;                               // playback pointer 0..total
   var playTimer = null;
   // 3D cube preview state
-  var face3dEls = new Array(54);
-  var rx = -24, ry = -32, folded = true, dragging = false, lastX = 0, lastY = 0;
+  var face3dEls = new Array(54), face3dFaceEls = {};
+  var rx = -24, ry = -32, folded = true, dragging = false, lastX = 0, lastY = 0, startX = 0, startY = 0, moved = false;
 
   var $ = function(id){ return document.getElementById(id); };
 
@@ -115,7 +115,8 @@
     var faces=[{f:'U',base:0},{f:'D',base:27},{f:'F',base:18},{f:'B',base:45},{f:'L',base:36},{f:'R',base:9}];
     faces.forEach(function(face){
       var fd=document.createElement('div'); fd.className='face3d f-'+face.f; fd.dataset.l=face.f;
-      for(var i=0;i<9;i++){ var st=document.createElement('div'); st.className='st3'; face3dEls[face.base+i]=st; fd.appendChild(st); }
+      face3dFaceEls[face.f]=fd;
+      for(var i=0;i<9;i++){ var st=document.createElement('div'); st.className='st3'; st.dataset.idx=face.base+i; face3dEls[face.base+i]=st; fd.appendChild(st); }
       cube.appendChild(fd);
     });
     apply3D();
@@ -134,9 +135,21 @@
     $('foldHint').textContent = folded ? 'Тяните мышкой, чтобы повернуть' : 'Это та же развёртка, что и слева';
   }
   function ptXY(e){ var t=(e.touches&&e.touches[0])?e.touches[0]:e; return {x:t.clientX, y:t.clientY}; }
-  function dragStart(e){ if(!folded) return; dragging=true; var p=ptXY(e); lastX=p.x; lastY=p.y; }
-  function dragMove(e){ if(!dragging) return; var p=ptXY(e); ry+=(p.x-lastX)*0.5; rx-=(p.y-lastY)*0.5; rx=Math.max(-89,Math.min(89,rx)); lastX=p.x; lastY=p.y; apply3D(); if(e.cancelable) e.preventDefault(); }
-  function dragEnd(){ dragging=false; }
+  function dragStart(e){ dragging=true; moved=false; var p=ptXY(e); startX=lastX=p.x; startY=lastY=p.y; }
+  function dragMove(e){
+    if(!dragging) return; var p=ptXY(e);
+    if(Math.abs(p.x-startX)+Math.abs(p.y-startY)>6) moved=true;
+    if(folded){ ry+=(p.x-lastX)*0.5; rx-=(p.y-lastY)*0.5; rx=Math.max(-89,Math.min(89,rx)); lastX=p.x; lastY=p.y; apply3D(); }
+    if(e.cancelable && moved) e.preventDefault();
+  }
+  // A tap (no drag) on a 3D sticker paints it — only while editing (not during playback).
+  function dragEnd(e){
+    if(dragging && !moved && !solution && e){
+      var t=e.target;
+      if(t && t.classList && t.classList.contains('st3') && t.dataset.idx!=null){ paint[+t.dataset.idx]=selColor; renderInput(); }
+    }
+    dragging=false;
+  }
 
   function onStickerClick(e){
     if (solution) return; // not in edit mode
