@@ -363,22 +363,27 @@
     for(var i=0;i<54;i++){ var st=face3dEls[i]; if(st){ var k=l2c[fc[i]]; st.className='st3 s-'+k; st.dataset.k=k; } }
   }
   var animating = false;
-  // Rotate the whole layer rigidly to 90°, then INSTANTLY snap back to base positions
-  // and recolour to the new state. At 90° the rotated layer coincides pixel-for-pixel with
-  // the recoloured base grid, so the snap is invisible. The snap MUST use transition:none —
-  // otherwise the .st3 default (0.8s) animates the layer visibly back, which looked wrong.
+  // Rotate the whole layer rigidly to 90° via the Web Animations API. WAAPI animates the
+  // transform WITHOUT writing inline style, so at finish the sticker reverts to its base
+  // transform instantly (no leftover CSS transition animating it back). At 90° the turned
+  // layer is pixel-identical to the recoloured base grid (verified), so recolouring on
+  // finish is seamless. Inline transform stays = base throughout; apply3D/CSS own folding.
+  var DUR3=300;
   function animateMove(move, done){
     var L=move[0], suf=move.slice(1);
-    if(!folded || !LAYER[L]){ done(); return; }
+    if(!folded || !LAYER[L] || typeof face3dEls[0].animate!=='function'){ done(); return; }
     var deg = SIGN[L]*(suf==='2'?180:(suf==="'"?-90:90));
     var rot='rotate'+AXIS[L]+'('+deg+'deg) ';
     animating=true;
-    LAYER[L].forEach(function(g){ var st=face3dEls[g]; st.style.transition='transform .3s ease-in-out'; st.style.transform=rot+ST_BASE[g]; });
-    setTimeout(function(){
-      LAYER[L].forEach(function(g){ var st=face3dEls[g]; st.style.transition='none'; st.style.transform=ST_BASE[g]; });
-      animating=false; done();                       // done() recolours to the new state
-      requestAnimationFrame(function(){ LAYER[L].forEach(function(g){ var st=face3dEls[g]; if(st) st.style.transition=''; }); });
-    }, 320);
+    var last=null;
+    LAYER[L].forEach(function(g){
+      var st=face3dEls[g];
+      last=st.animate([{transform:ST_BASE[g]},{transform:rot+ST_BASE[g]}], {duration:DUR3, easing:'ease-in-out', fill:'none'});
+    });
+    var fin=false;
+    function finish(){ if(fin) return; fin=true; animating=false; done(); }  // done() recolours to the new state
+    if(last) last.onfinish=finish;
+    setTimeout(finish, DUR3+120);   // fallback if onfinish doesn't fire
   }
   function applyView(){
     var cube=$('cube3d'); if(!cube) return;
