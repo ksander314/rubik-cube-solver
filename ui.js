@@ -12,6 +12,8 @@
   // face that uses `s-<key>` (which reads var(--<key>)) updates instantly.
   function applyColorVars(){ COLORS.forEach(function(c){ document.documentElement.style.setProperty('--'+c.k, c.hex); }); }
   function persistColors(){ try{ localStorage.setItem('rbk-colors', JSON.stringify(COLORS)); }catch(e){} }
+  function persistCube(){ try{ localStorage.setItem('rbk-cube', JSON.stringify(paint)); }catch(e){} }
+  function loadCube(){ try{ var a=JSON.parse(localStorage.getItem('rbk-cube')||'null'); if(a&&a.length===54){ for(var i=0;i<54;i++) paint[i]=a[i]; return true; } }catch(e){} return false; }
   function loadColors(){
     try{
       var arr=JSON.parse(localStorage.getItem('rbk-colors')||'null'); if(!arr) return;
@@ -124,6 +126,28 @@
   function render3D(){
     for(var i=0;i<54;i++){ var st=face3dEls[i]; if(st) st.className='st3 '+(paint[i]?('s-'+paint[i]):'s-empty'); }
   }
+  // render the 3D cube from a solve frame (face letters → the user's colors)
+  function render3Dfc(fc){
+    var l2c=letterToColor();
+    for(var i=0;i<54;i++){ var st=face3dEls[i]; if(st) st.className='st3 s-'+l2c[fc[i]]; }
+  }
+  // spin one face around its outward normal as a visual cue for the current move.
+  // local +Z of each face IS its outward normal, so rotateZ(+90)=clockwise-from-outside for all faces.
+  var FACE_TX = {
+    U:'rotateX(90deg) translateZ(var(--h))',  D:'rotateX(-90deg) translateZ(var(--h))',
+    F:'translateZ(var(--h))',                  B:'rotateY(180deg) translateZ(var(--h))',
+    R:'rotateY(90deg) translateZ(var(--h))',   L:'rotateY(-90deg) translateZ(var(--h))'
+  };
+  var animating = false;
+  function animateMove(move, done){
+    var L=move[0], suf=move.slice(1), fd=face3dFaceEls[L];
+    if(!fd || !folded){ done(); return; }              // only animate the assembled cube
+    var deg = suf==='2' ? 180 : (suf==="'" ? -90 : 90);
+    animating = true;
+    fd.style.transition = 'transform .26s ease-in-out';
+    fd.style.transform = FACE_TX[L] + ' rotateZ(' + deg + 'deg)';
+    setTimeout(function(){ fd.style.transition=''; fd.style.transform=''; animating=false; done(); }, 270);
+  }
   function apply3D(){
     var cube=$('cube3d'); if(!cube) return;
     cube.classList.toggle('unfolded', !folded);
@@ -167,6 +191,7 @@
     }
     buildLegend();
     render3D();
+    persistCube();
   }
   // show a facelet array (face letters) using the user's center colors
   function renderFrame(fc, hiFace){
@@ -340,7 +365,11 @@
     $('helpCard').classList.add('hidden');
     $('playControls').classList.remove('hidden');
     $('playCard').classList.remove('hidden');
-    // make stickers non-editable visually handled by solution!=null guard
+    // assemble the 3D cube so each move can be shown turning
+    folded = true; apply3D();
+    $('btnFold').textContent = 'Развернуть в плоскость ▦';
+    $('cubeTitle').textContent = 'Кубик 3D — поворачивается по шагам';
+    $('foldHint').textContent = 'Тяните мышкой, чтобы повернуть';
     ensureOrientBanner();
     renderPlayback();
   }
@@ -351,6 +380,8 @@
     $('helpCard').classList.remove('hidden');
     $('playControls').classList.add('hidden');
     $('playCard').classList.add('hidden');
+    $('cubeTitle').textContent = 'Кубик 3D ⇄ развёртка';
+    $('foldHint').textContent = 'Тяните — повернуть · клик — покрасить';
     renderInput();
   }
   function ensureOrientBanner(){
@@ -372,6 +403,7 @@
   function renderPlayback(){
     var sol=solution, i=ptr, m=letterToColor();
     renderFrame(sol.frames[i], i<sol.total ? sol.steps[i].move[0] : null);
+    render3Dfc(sol.frames[i]);
     updateOrient();
 
     var atEnd = i>=sol.total;
@@ -446,21 +478,26 @@
     }
   }
 
-  function next(){ if(ptr<solution.total){ ptr++; renderPlayback(); } else stopPlay(); }
-  function prev(){ if(ptr>0){ ptr--; renderPlayback(); } }
+  function next(){
+    if(animating) return;
+    if(ptr>=solution.total){ stopPlay(); return; }
+    animateMove(solution.steps[ptr].move, function(){ ptr++; renderPlayback(); });
+  }
+  function prev(){ if(animating) return; if(ptr>0){ ptr--; renderPlayback(); } }
   function startPlay(){
     if (ptr>=solution.total) ptr=0;
-    $('btnPlay').textContent='Pause';
-    playTimer=setInterval(function(){ if(ptr>=solution.total){ stopPlay(); } else next(); }, 750);
+    $('btnPlay').textContent='⏸ Пауза';
+    playTimer=setInterval(function(){ if(ptr>=solution.total){ stopPlay(); } else next(); }, 800);
   }
-  function stopPlay(){ if(playTimer){ clearInterval(playTimer); playTimer=null; } $('btnPlay').textContent='Auto-play'; }
+  function stopPlay(){ if(playTimer){ clearInterval(playTimer); playTimer=null; } $('btnPlay').textContent='Автопоказ'; }
   function togglePlay(){ if(playTimer) stopPlay(); else startPlay(); }
 
   // ---------- wire up ----------
   function init(){
     loadColors(); applyColorVars();
     buildNet(); buildPalette(); buildColorEditor(); build3D();
-    setSolved(); renderInput();
+    if (!loadCube()) setSolved();   // restore the last entered cube, else a solved one
+    renderInput();
     $('btnColors').addEventListener('click', function(){
       var ed=$('colorEditor'); ed.classList.toggle('hidden');
       $('btnColors').textContent = (ed.classList.contains('hidden')?'🎨 Настроить цвета':'🎨 Скрыть настройку');

@@ -4,7 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Сборка кубика Рубика — пошагово</title>
-<link rel="stylesheet" href="style.css?v=20260625">
+<meta name="description" content="Интерактивная пошаговая сборка кубика Рубика: задайте свой кубик и соберите его по шагам с пояснениями алгоритмов, 3D-кубиком и проверкой ввода.">
+<meta property="og:title" content="Сборка кубика Рубика — пошагово">
+<meta property="og:description" content="Задайте свой кубик и соберите его по шагам — с 3D-кубиком, анимацией ходов и понятными алгоритмами.">
+<meta property="og:type" content="website">
+<link rel="icon" href="favicon.svg?v=20260626">
+<link rel="stylesheet" href="style.css?v=20260626">
 </head>
 <body>
 <div class="wrap">
@@ -44,18 +49,21 @@
 
     <!-- СПРАВА: помощь / показ шагов -->
     <div class="col-side">
-      <!-- помощь по вводу -->
-      <div class="card" id="helpCard">
-        <h2>Кубик в 3D ⇄ развёртка</h2>
-        <div class="scene" id="scene" title="Тяните мышкой, чтобы повернуть">
+      <!-- 3D-кубик: виден и при вводе, и при показе шагов -->
+      <div class="card" id="cubeCard">
+        <h2 id="cubeTitle">Кубик 3D ⇄ развёртка</h2>
+        <div class="scene" id="scene" title="Тяните — повернуть, клик — покрасить">
           <div class="cube3d" id="cube3d"></div>
         </div>
         <div class="row" style="margin-top:6px">
           <button id="btnFold">Развернуть в плоскость ▦</button>
-          <span class="hint" id="foldHint" style="align-self:center">Тяните мышкой, чтобы повернуть</span>
+          <span class="hint" id="foldHint" style="align-self:center">Тяните — повернуть · клик — покрасить</span>
         </div>
+      </div>
 
-        <h2 style="margin-top:18px">Что такое развёртка</h2>
+      <!-- помощь по вводу -->
+      <div class="card" id="helpCard">
+        <h2 style="margin-top:0">Что такое развёртка</h2>
         <p style="margin:0 0 8px;color:var(--muted);font-size:13px">
           Представьте, что кубик — это коробка, которую разрезали по рёбрам и разложили на столе
           плоским крестом. Получается 6 квадратов 3×3:
@@ -104,8 +112,8 @@
   </div>
 </div>
 
-<script src="cube.js?v=20260625"></script>
-<script src="solver.js?v=20260625"></script>
-<script src="ui.js?v=20260625"></script>
+<script src="cube.js?v=20260626"></script>
+<script src="solver.js?v=20260626"></script>
+<script src="ui.js?v=20260626"></script>
 </body>
 </html>
