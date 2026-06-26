@@ -8,11 +8,12 @@
 <meta property="og:title" content="Сборка кубика Рубика — пошагово">
 <meta property="og:description" content="Задайте свой кубик и соберите его по шагам — с 3D-кубиком, анимацией ходов и понятными алгоритмами.">
 <meta property="og:type" content="website">
-<link rel="icon" href="favicon.svg?v=20260626i">
-<link rel="stylesheet" href="style.css?v=20260626i">
+<link rel="icon" href="favicon.svg?v=20260626j">
+<link rel="stylesheet" href="style.css?v=20260626j">
 </head>
 <body>
 <div class="wrap">
+  <button id="btnTheme" class="ghost theme-btn" title="Светлая / тёмная тема" aria-label="Тема">☾</button>
   <h1>Сборка кубика Рубика <span class="sub">— задайте свой кубик и соберите его по шагам</span></h1>
   <p class="lead">Раскрасьте шесть граней так, как на вашем настоящем кубике, и нажмите <b>Собрать</b>.
      Программа проведёт вас за руку — по одному ходу, кубик на экране меняется вместе с вами.</p>
@@ -32,6 +33,7 @@
           <button id="btnSolved">Сбросить (собранный)</button>
           <button id="btnScramble">Перемешать</button>
           <button class="ghost" id="btnClear">Очистить</button>
+          <button class="ghost" id="btnUndo" title="Отменить покраску (Ctrl+Z)">↶ Отменить</button>
         </div>
         <div class="row toolrow">
           <input type="text" id="scrambleInput" placeholder="или введите ходы: R U R′ U′ …" autocomplete="off" spellcheck="false">
@@ -120,7 +122,11 @@
           <h2>Текущий алгоритм целиком</h2>
           <div class="seq" id="seq"></div>
         </div>
-        <p style="margin:14px 0 0;color:var(--muted);font-size:12px">
+        <div class="speed">
+          <span>Скорость хода</span>
+          <input type="range" id="speed" min="120" max="600" step="60" title="Длительность анимации хода">
+        </div>
+        <p style="margin:10px 0 0;color:var(--muted);font-size:12px">
           Клавиши: <kbd>←</kbd> <kbd>→</kbd> шаг · <kbd>Пробел</kbd> старт/пауза
         </p>
       </div>
@@ -128,8 +134,8 @@
   </div>
 </div>
 
-<script src="cube.js?v=20260626i"></script>
-<script src="solver.js?v=20260626i"></script>
-<script src="ui.js?v=20260626i"></script>
+<script src="cube.js?v=20260626j"></script>
+<script src="solver.js?v=20260626j"></script>
+<script src="ui.js?v=20260626j"></script>
 </body>
 </html>

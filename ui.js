@@ -35,11 +35,19 @@
     if(!toks.length){ msg('Введите ходы, например: R U R′ U′'); return; }
     for(var i=0;i<toks.length;i++) if(!Cube.MOVES[toks[i]]){ msg('Непонятный ход: «'+toks[i]+'». Допустимы U R F D L B с ′ или 2.'); return; }
     var st=Cube.applySeq(Cube.solved(), toks), fc=Cube.toFacelets(st);
+    pushHistory();
     for(var j=0;j<54;j++) paint[j]=SOLVED[fc[j]];
     clearMsg(); renderInput();
   }
   // ---- colour-blind aid: show each sticker's colour-key letter on top ----
   function setLetters(on){ document.body.classList.toggle('show-letters', !!on); try{ localStorage.setItem('rbk-letters', on?'1':''); }catch(e){} }
+
+  // ---- QoL: theme, animation speed, undo ----
+  function setTheme(light){ document.body.classList.toggle('light', !!light); var b=$('btnTheme'); if(b) b.textContent = light?'☀':'☾'; try{ localStorage.setItem('rbk-theme', light?'1':''); }catch(e){} }
+  function setSpeed(ms){ DUR3 = ms; try{ localStorage.setItem('rbk-speed', String(ms)); }catch(e){} }
+  var painthist = [];
+  function pushHistory(){ painthist.push(paint.slice()); if(painthist.length>80) painthist.shift(); }
+  function undo(){ if(solution || !painthist.length) return; paint = painthist.pop(); renderInput(); }
 
   // ===================== LEARNING MODE =====================
   // Core algorithms for the reference sheet.
@@ -410,7 +418,7 @@
   function dragEnd(e){
     if(dragging && !moved && !solution && e){
       var t=e.target;
-      if(t && t.classList && t.classList.contains('st3') && t.dataset.idx!=null){ paint[+t.dataset.idx]=selColor; renderInput(); }
+      if(t && t.classList && t.classList.contains('st3') && t.dataset.idx!=null){ pushHistory(); paint[+t.dataset.idx]=selColor; renderInput(); }
     }
     dragging=false;
   }
@@ -418,6 +426,7 @@
   function onStickerClick(e){
     if (solution) return; // not in edit mode
     var idx = +e.currentTarget.dataset.idx;
+    pushHistory();
     paint[idx] = selColor;
     renderInput();
   }
@@ -756,6 +765,7 @@
   // ---------- wire up ----------
   function init(){
     loadColors(); applyColorVars(); loadMastery();
+    try{ setTheme(localStorage.getItem('rbk-theme')==='1'); var sp0=parseInt(localStorage.getItem('rbk-speed'),10); if(sp0) DUR3=sp0; }catch(e){}
     buildNet(); buildPalette(); buildColorEditor(); build3D();
     // priority: shared position in URL → last entered cube → solved
     if (!applyShareFromHash() && !loadCube()) setSolved();
@@ -785,14 +795,19 @@
     scene.addEventListener('touchmove', dragMove, {passive:false});
     scene.addEventListener('touchend', dragEnd);
     $('btnSolve').addEventListener('click', doSolve);
-    $('btnSolved').addEventListener('click', function(){ setSolved(); renderInput(); clearMsg(); });
-    $('btnScramble').addEventListener('click', function(){ setScramble(); renderInput(); clearMsg(); });
-    $('btnClear').addEventListener('click', function(){ setClear(); renderInput(); clearMsg(); });
+    $('btnSolved').addEventListener('click', function(){ pushHistory(); setSolved(); renderInput(); clearMsg(); });
+    $('btnScramble').addEventListener('click', function(){ pushHistory(); setScramble(); renderInput(); clearMsg(); });
+    $('btnClear').addEventListener('click', function(){ pushHistory(); setClear(); renderInput(); clearMsg(); });
+    $('btnUndo').addEventListener('click', undo);
+    $('btnTheme').addEventListener('click', function(){ setTheme(!document.body.classList.contains('light')); });
+    var sl=$('speed'); if(sl){ sl.value=DUR3; sl.addEventListener('input', function(){ setSpeed(+this.value); }); }
     $('btnNext').addEventListener('click', function(){ stopPlay(); next(); });
     $('btnPrev').addEventListener('click', function(){ stopPlay(); prev(); });
     $('btnPlay').addEventListener('click', togglePlay);
     $('btnEdit').addEventListener('click', exitPlayback);
     document.addEventListener('keydown', function(e){
+      if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;   // don't hijack text fields
+      if ((e.ctrlKey||e.metaKey) && (e.key==='z'||e.key==='Z')){ if(!solution){ undo(); e.preventDefault(); } return; }
       if (!solution) return;
       if (e.key==='ArrowRight'){ stopPlay(); next(); e.preventDefault(); }
       else if (e.key==='ArrowLeft'){ stopPlay(); prev(); e.preventDefault(); }
