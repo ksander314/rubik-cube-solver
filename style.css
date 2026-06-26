@@ -160,3 +160,31 @@ button.ghost{ background:transparent; }
 .seq .tok.past{ color:var(--muted); }
 .hidden{ display:none !important; }
 kbd{ background:var(--panel2); border:1px solid var(--line); border-bottom-width:2px; border-radius:5px; padding:1px 6px; font-size:12px; font-family:inherit; }
+
+/* ===================== mobile / touch polish ===================== */
+*{ -webkit-tap-highlight-color: transparent; }
+body{ overflow-x: hidden; }
+button, .sticker, .swatch, .st3, .toggle, label{ touch-action: manipulation; }
+
+@media (max-width: 700px){
+  :root{ --cell: clamp(20px, 6.6vw, 28px); }
+  .wrap{ padding:12px 12px 150px; }   /* clearance for the fixed playback bar */
+  h1{ font-size:18px; } h1 .sub{ display:block; font-size:13px; margin-top:2px; }
+  .lead{ font-size:13px; }
+  .cols{ gap:14px; }
+  .col-net, .col-side{ flex:1 1 100%; min-width:0; }
+  .card{ padding:13px; }
+  .scene{ height:230px; }
+  .net{ padding:10px; }
+  .move-glyph{ font-size:34px; min-width:62px; height:62px; }
+  /* bigger, comfortable tap targets */
+  button{ padding:11px 14px; }
+  .swatch{ width:34px; height:34px; }
+  /* pin Next/Prev to the bottom of the screen during playback (thumb-friendly) */
+  #playControls:not(.hidden){
+    position:fixed; left:0; right:0; bottom:0; z-index:20;
+    padding:10px 12px; padding-bottom:max(10px, env(safe-area-inset-bottom));
+    background:var(--panel); border-top:1px solid var(--line);
+  }
+  #playControls .row{ margin-top:0; justify-content:center; }
+}
