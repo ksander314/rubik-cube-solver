@@ -40,6 +40,110 @@
   }
   // ---- colour-blind aid: show each sticker's colour-key letter on top ----
   function setLetters(on){ document.body.classList.toggle('show-letters', !!on); try{ localStorage.setItem('rbk-letters', on?'1':''); }catch(e){} }
+
+  // ===================== LEARNING MODE =====================
+  // Core algorithms for the reference sheet.
+  var ALGOS = [
+    {n:'Триггер (вставка угла)',        s:"R U R'",                    w:'Первый слой: завести угол сверху в нижнее гнездо.'},
+    {n:'Завод ребра вправо',            s:"U R U' R' U' F' U F",       w:'Средний слой: ребро без верхнего цвета уходит вправо.'},
+    {n:'Завод ребра влево',             s:"U' L' U L U F U' F'",       w:'Средний слой: то же зеркально, влево.'},
+    {n:'Крест сверху',                  s:"F R U R' U' F'",            w:'Развернуть рёбра верха: точка → уголок → линия → крест.'},
+    {n:'Sune (разворот углов)',         s:"R U R' U R U2 R'",          w:'Развернуть верхние углы, пока грань не станет одного цвета.'},
+    {n:'Перестановка углов (A-perm)',   s:"R' F R' B2 R F' R' B2 R2",  w:'Поставить верхние углы по местам (разворот не меняет).'},
+    {n:'Перестановка рёбер (U-perm)',   s:"R U' R U R U R U' R' U' R2",w:'Поставить последние рёбра по местам — кубик собран.'}
+  ];
+  // Trainer: practice one phase at a time. Names match solver.js phase titles.
+  var TRAINER_PHASES = ['Крест снизу','Углы снизу','Средний слой','Крест сверху',
+                        'Разворот верхних углов','Расстановка верхних углов','Расстановка верхних рёбер'];
+
+  // Animate a move sequence on the 3D cube starting from a solved cube, then restore.
+  function demoSequence(moves){
+    if (demoRunning || animating) return;
+    demoRunning = true;
+    var prevFolded = folded; folded = true; apply3D();
+    var st = Cube.solved();
+    render3Dfc(Cube.toFacelets(st));
+    var i = 0;
+    (function step(){
+      if (i >= moves.length){
+        demoRunning = false;
+        if (solution) render3Dfc(solution.frames[ptr]); else render3D();
+        folded = prevFolded; apply3D(); return;
+      }
+      var mv = moves[i++];
+      animateMove(mv, function(){ st = Cube.applyMove(st, Cube.MOVES[mv]); render3Dfc(Cube.toFacelets(st)); step(); });
+    })();
+  }
+
+  // Build a random cube already solved up to `targetName`, so the user drills that phase.
+  function makePhaseStart(targetName){
+    for (var tries=0; tries<60; tries++){
+      var scr=Cube.solved();
+      for (var k=0;k<25;k++) scr=Cube.applyMove(scr, Cube.MOVES[Cube.ALL_MOVES[(Math.random()*18)|0]]);
+      var res=Solver.solve(scr), st=Cube.clone(scr), hit=false;
+      for (var p=0;p<res.phases.length;p++){
+        if (res.phases[p].name===targetName){ hit=true; break; }
+        res.phases[p].groups.forEach(function(g){ g.moves.forEach(function(mv){ st=Cube.applyMove(st, Cube.MOVES[mv]); }); });
+      }
+      if (hit) return st;   // target phase has work for this scramble
+    }
+    return null;
+  }
+  function setPaintFromState(st){ var fc=Cube.toFacelets(st); for(var j=0;j<54;j++) paint[j]=SOLVED[fc[j]]; }
+  function startTrainer(name){
+    var st=makePhaseStart(name);
+    if (!st){ msg('Не удалось подобрать случай — попробуйте ещё раз.'); return; }
+    setPaintFromState(st);
+    hintMode=true; var ch=$('chkHint'); if(ch) ch.checked=true;   // recall first
+    $('learnPanel').classList.add('hidden');
+    doSolve();   // earlier phases already solved → показ начинается с нужного этапа
+  }
+
+  // ---- learning panel (notation / reference / trainer share one container) ----
+  var learnOpen = null;
+  function toggleLearn(which){
+    var lp=$('learnPanel');
+    if (learnOpen===which){ lp.classList.add('hidden'); learnOpen=null; return; }
+    learnOpen=which; lp.classList.remove('hidden'); lp.innerHTML='';
+    if (which==='notation') buildNotation(lp);
+    else if (which==='reference') buildReference(lp);
+    else if (which==='trainer') buildTrainer(lp);
+  }
+  function buildNotation(lp){
+    lp.innerHTML =
+      '<h3>Нотация и термины</h3>'+
+      '<p>Каждая буква — поворот одной грани <b>по часовой стрелке</b> (глядя прямо на неё): '+
+      '<b>U</b> верх, <b>D</b> низ, <b>F</b> перёд, <b>B</b> зад, <b>L</b> лево, <b>R</b> право. '+
+      'Штрих <b>′</b> — против часовой, <b>2</b> — пол-оборота.</p>'+
+      '<p class="muted">Нажмите ход — кубик справа покажет его:</p>';
+    var row=document.createElement('div'); row.className='demo-row';
+    ['U',"U'","R","R'","F","F'","D","D'","L","L'","B","B'"].forEach(function(mv){
+      var b=document.createElement('button'); b.textContent=mv; b.addEventListener('click', function(){ demoSequence([mv]); }); row.appendChild(b);
+    });
+    lp.appendChild(row);
+    var t=document.createElement('p'); t.className='muted'; t.style.marginTop='10px';
+    t.innerHTML='<b>Ребро</b> — деталь с 2 цветами, <b>угол</b> — с 3, <b>центр</b> — задаёт цвет грани. '+
+      '<b>Ориентация</b> — каким боком повёрнута деталь; <b>перестановка</b> — на каком она месте.';
+    lp.appendChild(t);
+  }
+  function buildReference(lp){
+    lp.innerHTML='<h3>Справочник алгоритмов</h3><p class="muted">Шесть формул на всю сборку. «▶» — показать на кубике.</p>';
+    ALGOS.forEach(function(a){
+      var row=document.createElement('div'); row.className='algo-row';
+      row.innerHTML='<div class="algo-row-h"><b>'+a.n+'</b> <button class="ghost play">▶</button></div>'+
+        '<div class="algo-row-s">'+a.s+'</div><div class="muted algo-row-w">'+a.w+'</div>';
+      row.querySelector('.play').addEventListener('click', function(){ demoSequence(a.s.split(/\s+/)); });
+      lp.appendChild(row);
+    });
+  }
+  function buildTrainer(lp){
+    lp.innerHTML='<h3>Тренажёр по этапам</h3><p class="muted">Кубик соберётся до выбранного этапа — отработайте только его (подсказка скрыта, открывайте по кнопке). Жмите ещё раз — новый случай.</p>';
+    var row=document.createElement('div'); row.className='demo-row';
+    TRAINER_PHASES.forEach(function(name){
+      var b=document.createElement('button'); b.textContent=name; b.addEventListener('click', function(){ startTrainer(name); }); row.appendChild(b);
+    });
+    lp.appendChild(row);
+  }
   function loadColors(){
     try{
       var arr=JSON.parse(localStorage.getItem('rbk-colors')||'null'); if(!arr) return;
@@ -74,6 +178,8 @@
   // 3D cube preview state
   var face3dEls = new Array(54), face3dFaceEls = {};
   var rx = -24, ry = -32, folded = true, dragging = false, lastX = 0, lastY = 0, startX = 0, startY = 0, moved = false;
+  // learning mode state
+  var hintMode = false, revealed = false, demoRunning = false;
 
   var $ = function(id){ return document.getElementById(id); };
 
@@ -393,7 +499,7 @@
     $('playControls').classList.remove('hidden');
     $('playCard').classList.remove('hidden');
     // assemble the 3D cube so each move can be shown turning
-    folded = true; apply3D();
+    folded = true; apply3D(); revealed = false;
     $('btnFold').textContent = 'Развернуть в плоскость ▦';
     $('cubeTitle').textContent = 'Кубик 3D — поворачивается по шагам';
     $('foldHint').textContent = 'Тяните мышкой, чтобы повернуть';
@@ -438,19 +544,26 @@
     var rg = (phaseIdx>=0) ? sol.ranges[phaseIdx] : null;
 
     var grp = !atEnd ? sol.groups[sol.steps[i].group] : null;
+    var hide = !atEnd && hintMode && !revealed;     // recall-yourself mode
+    $('btnReveal').classList.toggle('hidden', !hide);
     if (!atEnd){
       $('phaseName').textContent = (phaseIdx+1)+'. '+rg.name;
       $('phaseHint').textContent = rg.hint;
-      // current algorithm
-      $('algoBox').style.display='';
-      $('algoName').textContent = grp.name;
-      $('algoSeq').textContent = rangeMoves(grp.start, grp.end).join(' ');
-      $('algoDesc').textContent = grp.desc || '';
-      var mv=sol.steps[i].move, L=mv[0], suf=mv.slice(1);
-      $('moveGlyph').textContent = mv;
-      $('moveArrow').textContent = ARROW[suf];
-      $('moveDesc').innerHTML = '<b>Поверните грань '+L+' ('+FACENAME[L]+', '+NAME[m[L]]+') '+dirWord(suf)+'.</b>'+
-        '<div class="small">'+(suf==="2"?"Два поворота на четверть.":"Один поворот на четверть, глядя прямо на эту грань.")+'</div>';
+      if (hide){
+        $('algoBox').style.display='none';
+        $('moveGlyph').textContent='?'; $('moveArrow').textContent='';
+        $('moveDesc').innerHTML='<b>Твой ход?</b><div class="small">Вспомни сам по цели этапа выше, потом нажми «Показать ход».</div>';
+      } else {
+        $('algoBox').style.display='';
+        $('algoName').textContent = grp.name;
+        $('algoSeq').textContent = rangeMoves(grp.start, grp.end).join(' ');
+        $('algoDesc').textContent = grp.desc || '';
+        var mv=sol.steps[i].move, L=mv[0], suf=mv.slice(1);
+        $('moveGlyph').textContent = mv;
+        $('moveArrow').textContent = ARROW[suf];
+        $('moveDesc').innerHTML = '<b>Поверните грань '+L+' ('+FACENAME[L]+', '+NAME[m[L]]+') '+dirWord(suf)+'.</b>'+
+          '<div class="small">'+(suf==="2"?"Два поворота на четверть.":"Один поворот на четверть, глядя прямо на эту грань.")+'</div>';
+      }
     } else if (sol.defect){
       $('algoBox').style.display='none';
       var d=sol.defect, fls = d.type==='twist' ? Cube.CORNER_FL[d.slot] : Cube.EDGE_FL[d.slot];
@@ -478,7 +591,8 @@
     $('counter').textContent = !atEnd ? ('Ход '+(i+1)+' из '+sol.total) : (sol.defect?'Готово, кроме дефекта':('Готово — '+sol.total+' ходов'));
     $('progress').style.width = (sol.total ? (100*i/sol.total) : 100)+'%';
     renderPhaseList(phaseIdx);
-    if (grp) renderSeq(grp, i); else $('seq').innerHTML='';
+    if (hide) $('seq').innerHTML='<span class="muted">скрыто — нажми «Показать ход»</span>';
+    else if (grp) renderSeq(grp, i); else $('seq').innerHTML='';
     $('btnPrev').disabled = (i<=0);
     $('btnNext').disabled = (i>=sol.total);
   }
@@ -490,7 +604,7 @@
       if (ptr>=rg.end) cls='done'; else if(pi===activeIdx) cls='active';
       li.className=cls;
       li.innerHTML='<span>'+(pi+1)+'. '+rg.name+'</span><span class="cnt">'+(rg.end-rg.start)+'</span>';
-      li.addEventListener('click', function(){ ptr=rg.start; stopPlay(); renderPlayback(); });
+      li.addEventListener('click', function(){ ptr=rg.start; stopPlay(); revealed=false; renderPlayback(); });
       ol.appendChild(li);
     });
   }
@@ -508,9 +622,9 @@
   function next(){
     if(animating) return;
     if(ptr>=solution.total){ stopPlay(); return; }
-    animateMove(solution.steps[ptr].move, function(){ ptr++; renderPlayback(); });
+    animateMove(solution.steps[ptr].move, function(){ ptr++; revealed=false; renderPlayback(); });
   }
-  function prev(){ if(animating) return; if(ptr>0){ ptr--; renderPlayback(); } }
+  function prev(){ if(animating) return; if(ptr>0){ ptr--; revealed=false; renderPlayback(); } }
   function startPlay(){
     if (ptr>=solution.total) ptr=0;
     $('btnPlay').textContent='⏸ Пауза';
@@ -528,6 +642,11 @@
     try{ if(localStorage.getItem('rbk-letters')){ document.body.classList.add('show-letters'); var cl=$('chkLetters'); if(cl) cl.checked=true; } }catch(e){}
     renderInput();
     $('btnShare').addEventListener('click', shareLink);
+    $('btnNotation').addEventListener('click', function(){ toggleLearn('notation'); });
+    $('btnReference').addEventListener('click', function(){ toggleLearn('reference'); });
+    $('btnTrainer').addEventListener('click', function(){ toggleLearn('trainer'); });
+    $('chkHint').addEventListener('change', function(){ hintMode=this.checked; revealed=false; if(solution) renderPlayback(); });
+    $('btnReveal').addEventListener('click', function(){ revealed=true; renderPlayback(); });
     $('btnApplyScramble').addEventListener('click', function(){ applyScramble($('scrambleInput').value); });
     $('scrambleInput').addEventListener('keydown', function(e){ if(e.key==='Enter') applyScramble(this.value); });
     $('chkLetters').addEventListener('change', function(){ setLetters(this.checked); });
@@ -566,7 +685,7 @@
     paintAt:function(i,k){ paint[i]=k; renderInput(); },
     get:function(i){ return paint[i]; },
     solve:doSolve,
-    goto:function(n){ if(solution){ ptr=Math.max(0,Math.min(solution.total,n)); renderPlayback(); } },
+    goto:function(n){ if(solution){ ptr=Math.max(0,Math.min(solution.total,n)); revealed=false; renderPlayback(); } },
     total:function(){ return solution?solution.total:0; }
   };
 })();

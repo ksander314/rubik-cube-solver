@@ -8,8 +8,8 @@
 <meta property="og:title" content="Сборка кубика Рубика — пошагово">
 <meta property="og:description" content="Задайте свой кубик и соберите его по шагам — с 3D-кубиком, анимацией ходов и понятными алгоритмами.">
 <meta property="og:type" content="website">
-<link rel="icon" href="favicon.svg?v=20260626">
-<link rel="stylesheet" href="style.css?v=20260626">
+<link rel="icon" href="favicon.svg?v=20260626b">
+<link rel="stylesheet" href="style.css?v=20260626b">
 </head>
 <body>
 <div class="wrap">
@@ -39,6 +39,12 @@
           <button class="ghost" id="btnShare">🔗 Ссылка</button>
           <label class="toggle"><input type="checkbox" id="chkLetters"> буквы на наклейках</label>
         </div>
+        <div class="row">
+          <button class="ghost" id="btnNotation">🎓 Нотация и термины</button>
+          <button class="ghost" id="btnReference">📖 Алгоритмы</button>
+          <button class="ghost" id="btnTrainer">🏋 Тренажёр</button>
+        </div>
+        <div id="learnPanel" class="learn-panel hidden"></div>
         <div class="msg" id="msg"></div>
       </div>
 
@@ -49,6 +55,7 @@
           <button class="primary" id="btnNext">Дальше ▶</button>
           <button id="btnPlay">Автопоказ</button>
           <button class="ghost" id="btnEdit">✎ Изменить кубик</button>
+          <label class="toggle"><input type="checkbox" id="chkHint"> без подсказки</label>
         </div>
       </div>
     </div>
@@ -103,6 +110,7 @@
           <div class="arrow" id="moveArrow"></div>
           <div class="move-desc" id="moveDesc"></div>
         </div>
+        <button id="btnReveal" class="primary hidden" style="margin-top:10px">Показать ход</button>
         <div class="counter" id="counter"></div>
         <div class="bar"><span id="progress"></span></div>
         <ol class="phases" id="phaseList"></ol>
@@ -118,8 +126,8 @@
   </div>
 </div>
 
-<script src="cube.js?v=20260626"></script>
-<script src="solver.js?v=20260626"></script>
-<script src="ui.js?v=20260626"></script>
+<script src="cube.js?v=20260626b"></script>
+<script src="solver.js?v=20260626b"></script>
+<script src="ui.js?v=20260626b"></script>
 </body>
 </html>
